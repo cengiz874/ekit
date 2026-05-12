@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>CENTRAL_INTEL // OSINT_CONSOLE</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;500;700&family=Syncopate:wght@400;700&display=swap');
+
+  :root {
+    --primary: #00ff88;
+    --primary-dim: rgba(0, 255, 136, 0.2);
+    --bg-black: #050505;
+    --panel-bg: rgba(15, 15, 15, 0.95);
+    --border: #1a1a1a;
+    --text-dim: #444;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background-color: var(--bg-black);
+    color: var(--primary);
+    font-family: 'JetBrains Mono', monospace;
+    height: 100vh;
+    height: -webkit-fill-available;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* Grid Background */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: 
+      linear-gradient(var(--border) 1px, transparent 1px),
+      linear-gradient(90deg, var(--border) 1px, transparent 1px);
+    background-size: 40px 40px;
+    z-index: -1;
+    opacity: 0.2;
+  }
+
+  /* Interface Wrapper */
+  .interface {
+    width: 92%;
+    max-width: 500px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border);
+    position: relative;
+    box-shadow: 0 0 50px rgba(0,0,0,1);
+    z-index: 10;
+  }
+
+  .header-bar {
+    background: var(--border);
+    padding: 10px 15px;
+    font-size: 9px;
+    display: flex;
+    justify-content: space-between;
+    letter-spacing: 1px;
+    color: #666;
+  }
+
+  .content { padding: 30px 20px; }
+
+  .phase { display: none; }
+  .phase.active { display: block; animation: slideIn 0.3s ease-out; }
+
+  /* Forms */
+  .title-small {
+    font-family: 'Syncopate', sans-serif;
+    font-size: 11px;
+    margin-bottom: 25px;
+    letter-spacing: 4px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  .input-group {
+    margin-bottom: 20px;
+    position: relative;
+  }
+
+  label {
+    display: block;
+    font-size: 9px;
+    margin-bottom: 6px;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  input {
+    background: rgba(0,0,0,0.7);
+    border: 1px solid var(--border);
+    width: 100%;
+    padding: 12px;
+    color: var(--primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    outline: none;
+    transition: 0.3s;
+    border-radius: 0;
+  }
+
+  input:focus {
+    border-color: var(--primary);
+  }
+
+  /* Mobile Button */
+  .action-btn {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    padding: 12px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    font-weight: bold;
+    letter-spacing: 3px;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: 0.3s;
+  }
+
+  .action-btn:active {
+    background: var(--primary);
+    color: #000;
+  }
+
+  .error-msg {
+    font-size: 9px;
+    color: #ff3333;
+    margin-top: 10px;
+    text-align: center;
+    display: none;
+  }
+
+  /* Crack Visualization */
+  .decrypt-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin: 20px 0;
+  }
+
+  .cell {
+    aspect-ratio: 3/4;
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    background: rgba(0,0,0,0.6);
+  }
+
+  .cell.active { border-color: var(--primary); box-shadow: inset 0 0 10px var(--primary-dim); }
+  .cell.locked { background: var(--primary-dim); color: #fff; border-color: var(--primary); }
+
+  .token-box {
+    font-size: 8px;
+    color: var(--text-dim);
+    border: 1px dashed var(--border);
+    padding: 8px;
+    margin-top: 15px;
+    word-break: break-all;
+    text-align: center;
+  }
+
+  /* Success Overlay */
+  .overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: var(--bg-black);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    padding: 20px;
+  }
+
+  .big-text {
+    font-family: 'Syncopate', sans-serif;
+    font-size: 24px;
+    font-weight: bold;
+    letter-spacing: 8px;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+
+  .exit-btn {
+    background: var(--primary);
+    border: none;
+    padding: 15px 40px;
+    color: #000;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: bold;
+    letter-spacing: 2px;
+    margin-top: 40px;
+  }
+
+  @keyframes slideIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+</style>
+</head>
+<body>
+
+<div class="interface">
+  <div class="header-bar">
+    <div id="sysTime">TIMESTAMP: --:--:--</div>
+    <div>SEC: HIGH</div>
+  </div>
+
+  <div class="content">
+    <!-- PHASE 1: LOGIN -->
+    <div id="loginPhase" class="phase active">
+      <div class="title-small">SISTEM GİRİŞİ</div>
+      <div class="input-group">
+        <label>KULLANICI_ADI</label>
+        <input type="text" id="userInput" autocomplete="off" placeholder="Kullanıcı" spellcheck="false">
+      </div>
+      <div class="input-group">
+        <label>ERİŞİM_ANAHTARI</label>
+        <input type="password" id="passInput" placeholder="••••">
+      </div>
+      <button class="action-btn" onclick="handleLogin()">GİRİŞ YAP</button>
+      <div class="error-msg" id="loginError">VERİTABANI HATASI: GEÇERSİZ KİMLİK</div>
+    </div>
+
+    <!-- PHASE 2: TARGET -->
+    <div id="targetPhase" class="phase">
+      <div class="title-small">HEDEF ANALİZİ</div>
+      <div class="input-group">
+        <label>SALDIRILACAK_NUMERİK_DİZİ</label>
+        <input type="number" id="targetInput" pattern="[0-9]*" inputmode="numeric" placeholder="Örn: 1234">
+      </div>
+      <button class="action-btn" onclick="handleTarget()">PROTOKOLÜ BAŞLAT</button>
+      <div id="sessionToken" class="token-box">TOKEN: GENERATING...</div>
+    </div>
+
+    <!-- PHASE 3: CRACKING -->
+    <div id="crackPhase" class="phase">
+      <div class="title-small">DECRYPT_PROCESS</div>
+      <div id="grid" class="decrypt-grid"></div>
+      <div style="font-size: 10px; color: var(--primary); text-align: center;" id="crackStatus">İLERLEME: %0</div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="successOverlay">
+  <div class="big-text">ERİŞİM SAĞLANDI</div>
+  <div id="finalAdmin" style="letter-spacing: 3px; font-size: 11px; margin-bottom: 10px; color: #666;"></div>
+  <div id="finalCode" style="color: var(--primary); font-size: 36px; font-weight: bold;"></div>
+  <button class="exit-btn" onclick="location.reload()">BAĞLANTIYI KES</button>
+</div>
+
+<script>
+  const vault = { "tekin": "52", "kerem": "52" };
+  let activeAdmin = "";
+
+  setInterval(() => {
+    document.getElementById('sysTime').textContent = "TIMESTAMP: " + new Date().toLocaleTimeString();
+  }, 1000);
+
+  function handleLogin() {
+    const u = document.getElementById('userInput').value.toUpperCase().trim();
+    const p = document.getElementById('passInput').value;
+    const error = document.getElementById('loginError');
+
+    if (vault[u] && vault[u] === p) {
+      activeAdmin = u;
+      generateToken();
+      switchPhase('loginPhase', 'targetPhase');
+    } else {
+      error.style.display = 'block';
+      document.getElementById('passInput').value = "";
+    }
+  }
+
+  function handleTarget() {
+    const val = document.getElementById('targetInput').value;
+    if (val.length > 0) {
+      startBruteForce(val);
+    }
+  }
+
+  // Klavye Enter desteği de kalsın
+  window.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      const activePhase = document.querySelector('.phase.active').id;
+      if (activePhase === 'loginPhase') handleLogin();
+      else if (activePhase === 'targetPhase') handleTarget();
+    }
+  });
+
+  function generateToken() {
+    const token = "SEC_" + Math.random().toString(36).substr(2, 12).toUpperCase() + "_AUTH";
+    document.getElementById('sessionToken').textContent = "SESSION_TOKEN: " + token;
+  }
+
+  function switchPhase(oldID, newID) {
+    document.getElementById(oldID).classList.remove('active');
+    document.getElementById(newID).classList.add('active');
+  }
+
+  function startBruteForce(target) {
+    switchPhase('targetPhase', 'crackPhase');
+    const grid = document.getElementById('grid');
+    grid.innerHTML = '';
+    const cells = [];
+
+    for (let char of target) {
+      const c = document.createElement('div');
+      c.className = 'cell';
+      c.textContent = '0';
+      grid.appendChild(c);
+      cells.push({ el: c, target: char, locked: false });
+    }
+
+    const scrambler = setInterval(() => {
+      cells.forEach(c => {
+        if (!c.locked) c.el.textContent = Math.floor(Math.random() * 10);
+      });
+    }, 70);
+
+    let count = 0;
+    cells.forEach((c, i) => {
+      const lockTime = 2000 + (i * 1500);
+
+      setTimeout(() => {
+        c.el.classList.add('active');
+        document.getElementById('crackStatus').textContent = `BYTE_${i+1} ANALİZ EDİLİYOR...`;
+      }, lockTime - 800);
+
+      setTimeout(() => {
+        c.locked = true;
+        c.el.textContent = c.target;
+        c.el.classList.remove('active');
+        c.el.classList.add('locked');
+        count++;
+        document.getElementById('crackStatus').textContent = `İLERLEME: %${Math.floor((count/cells.length)*100)}`;
+
+        if (count === cells.length) {
+          clearInterval(scrambler);
+          setTimeout(() => {
+            document.getElementById('finalAdmin').textContent = "OPERATÖR: " + activeAdmin;
+            document.getElementById('finalCode').textContent = target;
+            document.getElementById('successOverlay').style.display = 'flex';
+          }, 1000);
+        }
+      }, lockTime);
+    });
+  }
+</script>
+
+</body>
+</html>
